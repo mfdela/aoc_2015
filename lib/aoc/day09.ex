@@ -1,4 +1,6 @@
 defmodule Aoc.Day09 do
+  # import Aoc.Tools.Permutations
+
   def part1(args) do
     g =
       args
@@ -44,7 +46,7 @@ defmodule Aoc.Day09 do
   def find_all_paths(graph) do
     graph
     |> Graph.vertices()
-    |> permutations()
+    |> Aoc.Tools.Permutations.permutations()
     |> Enum.filter(&valid_path?(&1, graph))
   end
 
@@ -59,11 +61,5 @@ defmodule Aoc.Day09 do
     |> Enum.chunk_every(2, 1, :discard)
     |> Enum.map(fn [from, to] -> Graph.edge(graph, from, to).weight end)
     |> Enum.sum()
-  end
-
-  defp permutations([]), do: [[]]
-
-  defp permutations(list) do
-    for h <- list, t <- permutations(list -- [h]), do: [h | t]
   end
 end

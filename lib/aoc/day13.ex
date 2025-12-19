@@ -59,14 +59,8 @@ defmodule Aoc.Day13 do
   def evaluate_happiness(happiness_map, names) do
     names
     |> MapSet.to_list()
-    |> permutations()
+    |> Aoc.Tools.Permutations.permutations()
     |> Enum.map(&compute_happiness(&1, happiness_map))
     |> Enum.max()
-  end
-
-  defp permutations([]), do: [[]]
-
-  defp permutations(list) do
-    for h <- list, t <- permutations(list -- [h]), do: [h | t]
   end
 end
