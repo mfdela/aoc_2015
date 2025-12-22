@@ -7,15 +7,11 @@ defmodule Aoc.Day19 do
   end
 
   def part2(args) do
-    {replacements, molecule} =
+    {_replacements, molecule} =
       args
       |> parse_input()
 
-    replacements
-    |> Enum.sort_by(fn {_from, to} -> -String.length(to) end)
-    |> greedy_reduce(molecule, 0)
-
-    # solve_math_part2(molecule)
+    solve_math_part2(molecule)
   end
 
   def parse_input(input) do
