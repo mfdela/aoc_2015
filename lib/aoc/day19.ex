@@ -7,11 +7,12 @@ defmodule Aoc.Day19 do
   end
 
   def part2(args) do
-    {_replacements, molecule} =
-      args
-      |> parse_input()
+    # {replacements, molecule} =
+    args
+    |> parse_input()
+    |> astar_search()
 
-    solve_math_part2(molecule)
+    # solve_math_part2(molecule)
   end
 
   def parse_input(input) do
@@ -62,64 +63,74 @@ defmodule Aoc.Day19 do
     atoms - rn_count - ar_count - 2 * y_count - 1
   end
 
-  # def bfs_reverse({replacements, end_molecule}) do
-  #   queue = :queue.from_list([{end_molecule, 0}])
-  #   visited = MapSet.new([end_molecule])
+  defp astar_search({replacements, target}) do
+    # Priority queue: {priority, molecule, steps}
+    # Priority = steps + heuristic (molecule length as estimate to "e")
+    initial_priority = String.length(target)
+    pq = [{initial_priority, target, 0}]
 
-  #   bfs_loop(replacements, visited, queue)
-  # end
+    # Cache: molecule -> best steps to reach it
+    cache = %{target => 0}
 
-  # defp bfs_loop(replacements, visited, queue) do
-  #   case :queue.out(queue) do
-  #     {{:value, {molecule, steps}}, queue_rest} ->
-  #       # Check if we reached "e"
-  #       if molecule == "e" do
-  #         steps
-  #       else
-  #         # Try all reverse replacements (replace RHS with LHS)
-  #         {new_queue, new_visited} =
-  #           apply_reverse_replacements(molecule, steps, replacements, queue_rest, visited)
+    astar_loop(pq, cache, replacements)
+  end
 
-  #         bfs_loop(replacements, new_visited, new_queue)
-  #       end
+  defp astar_loop([], _cache, _replacements), do: :not_found
 
-  #     {:empty, _} ->
-  #       :not_found
-  #   end
-  # end
+  defp astar_loop(pq, cache, replacements) do
+    # Get the entry with minimum priority
+    [{_priority, molecule, steps} | pq_rest] = Enum.sort_by(pq, fn {p, _, _} -> p end)
 
-  # defp apply_reverse_replacements(molecule, steps, replacements, queue, visited) do
-  #   Enum.reduce(replacements, {queue, visited}, fn {from, to}, {q_acc, v_acc} ->
-  #     # Find all positions where we can apply this reverse replacement
-  #     find_and_replace_all(molecule, to, from, steps + 1, q_acc, v_acc)
-  #   end)
-  # end
+    # Check if we reached "e"
+    if molecule == "e" do
+      steps
+    else
+      # Skip if we've found a better path to this molecule
+      if Map.get(cache, molecule, :infinity) < steps do
+        astar_loop(pq_rest, cache, replacements)
+      else
+        # Try all reverse replacements
+        {new_pq, new_cache} =
+          apply_astar_replacements(molecule, steps, replacements, pq_rest, cache)
 
-  # defp find_and_replace_all(molecule, pattern, replacement, new_steps, queue, visited) do
-  #   length = String.length(pattern)
-  #   max_pos = String.length(molecule) - length
+        astar_loop(new_pq, new_cache, replacements)
+      end
+    end
+  end
 
-  #   0..max_pos
-  #   |> Enum.reduce({queue, visited}, fn pos, {q_acc, v_acc} ->
-  #     if String.slice(molecule, pos, length) == pattern do
-  #       # Found a match, create new molecule
-  #       new_molecule =
-  #         String.slice(molecule, 0, pos) <>
-  #           replacement <>
-  #           String.slice(molecule, pos + length, String.length(molecule))
+  defp apply_astar_replacements(molecule, steps, replacements, pq, cache) do
+    Enum.reduce(replacements, {pq, cache}, fn {from, to}, {pq_acc, cache_acc} ->
+      find_and_replace_astar(molecule, to, from, steps + 1, pq_acc, cache_acc)
+    end)
+  end
 
-  #       # Add to queue if not visited
-  #       if new_molecule in v_acc do
-  #         {q_acc, v_acc}
-  #       else
-  #         {
-  #           :queue.in({new_molecule, new_steps}, q_acc),
-  #           MapSet.put(v_acc, new_molecule)
-  #         }
-  #       end
-  #     else
-  #       {q_acc, v_acc}
-  #     end
-  #   end)
-  # end
+  defp find_and_replace_astar(molecule, pattern, replacement, new_steps, pq, cache) do
+    length = String.length(pattern)
+    max_pos = String.length(molecule) - length
+
+    0..max_pos
+    |> Enum.reduce({pq, cache}, fn pos, {pq_acc, cache_acc} ->
+      if String.slice(molecule, pos, length) == pattern do
+        new_molecule =
+          String.slice(molecule, 0, pos) <>
+            replacement <>
+            String.slice(molecule, pos + length, String.length(molecule))
+
+        # Only add if we haven't seen it or found a better path
+        cached_steps = Map.get(cache_acc, new_molecule, :infinity)
+
+        if new_steps < cached_steps do
+          # Heuristic: steps + molecule length (estimate distance to "e")
+          priority = new_steps + String.length(new_molecule)
+          new_pq = [{priority, new_molecule, new_steps} | pq_acc]
+          new_cache = Map.put(cache_acc, new_molecule, new_steps)
+          {new_pq, new_cache}
+        else
+          {pq_acc, cache_acc}
+        end
+      else
+        {pq_acc, cache_acc}
+      end
+    end)
+  end
 end
